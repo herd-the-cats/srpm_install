@@ -1,0 +1,18 @@
+galaxy_info:
+  author: Jason Glass
+  description: This role downloads, builds, and installs source RPMs.
+  company: N/A
+  license: BSD
+
+  min_ansible_version: 2.7
+  platforms:
+  - name: Fedora
+    versions:
+    - "29"
+
+  galaxy_tags:
+  - "srpm"
+  - "dnf"
+  - "rpmbuild"
+
+dependencies: []

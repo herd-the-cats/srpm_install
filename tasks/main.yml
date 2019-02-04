@@ -1,0 +1,102 @@
+---
+# tasks file for srpm_install
+- name: "Install prerequisites for rpmbuild."
+  dnf:
+    name: "{{ item }}"
+    state: "present"
+  with_items: "{{ srpm_build_deps }}"
+
+- name: "Create build directory for custom rpm packages."
+  file:
+    path: "{{ lookup('env','HOME')}}/{{ srpm_build_dir }}"
+    state: "directory"
+    mode: 0755
+  become: no
+
+- name: "Create .rpmmacros file pointing to custom rpm build directory."
+  template:
+    src: "userhome/.rpmmacros"
+    dest: "{{ lookup('env','HOME')}}/.rpmmacros"
+    mode: 0644
+  become: no
+
+- name: "Download SRPMs."
+  get_url:
+    url: "{{ item.url }}"
+    dest: "/tmp/"
+    mode: 0644
+  with_items: "{{ srpm_pkgs }}"
+  register: srpm_dl
+  become: no
+
+- name: "Install SRPMs."
+  command: "rpm -ivh /tmp/{{ item.url | basename }}"
+  with_items: "{{ srpm_pkgs }}"
+  when: srpm_dl is changed
+  become: no
+
+- name: "Copy custom SRPM spec files."
+  copy:
+    src: "srpm_specs/{{ item.spec }}"
+    dest: "{{lookup('env', 'HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec }}"
+    mode: 0644
+  with_items: "{{ srpm_pkgs }}"
+  when: srpm_dl is changed
+  become: no
+
+- name: "Install SRPM dependencies."
+  dnf:
+    name: "{{ item.1 }}"
+    state: "present"
+  with_subelements:
+  - "{{ srpm_pkgs }}"
+  - "deps"
+  when: srpm_dl is changed
+
+- name: "Build custom RPMs."
+  command: "rpmbuild -bb {{lookup('env','HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec }}"
+  with_items: "{{ srpm_pkgs }}"
+  register: srpm_rpmbuild
+  when: srpm_dl is changed
+  become: no
+
+- name: "Set variable with srpm names."
+  set_fact:
+    srpm_names: "{{ srpm_names | default([]) + [ item.name ] }}"
+  with_items: "{{ srpm_pkgs }}"
+  become: no
+
+# This takes an empty list (srpm_built) and adds a list at a time generated from the whole stdout of .results of the rpmbuild
+# command. The regex is overly specific partly because a capture group is needed for both package name and arch thanks to the srpm build 
+# environment making an arch directory. x86_64 and noarch seem to be the only ones worth worrying with here.
+- name: "Extract built package names."
+  set_fact:
+    srpm_built: >
+      {{ srpm_built | default([]) +
+      item.stdout |
+      regex_findall('^Wrote[:].*rpm$', multiline=True) |
+      map('regex_replace','^Wrote:\s[/\S]+(?P<name>(?:' +
+      srpm_names | join('|') +
+      ')[-\w]*[-]?(?:\d\.\d\d\.\d[-]\d)+[.\w]+(?P<arch>x86_64|noarch)+\.rpm)', '\g<name> \g<arch>') |
+      list }}
+  with_items: "{{ srpm_rpmbuild.results }}"
+  become: no
+
+- name: "Install custom RPMS."
+  dnf:
+    name: >
+      {{ srpm_built | reject('search','debug') |
+      map('regex_replace', '^([^\s]+)\s([^\s]+)$', lookup('env','HOME') +
+      '/' + srpm_build_dir + '/RPMS/\2/\1') | list }}
+    state: "present"
+  when: 'srpm_dl is changed and srpm_rpmbuild.msg == "All items completed"'
+
+- name: "Exclude custom packages from dnf."
+  lineinfile:
+    state: "present"
+    firstmatch: yes
+    insertafter: '\[main\]'
+    backup: yes
+    path: "/etc/dnf/dnf.conf"
+    line: "excludepkgs={{ srpm_names | join(',') }}"
+  when: 'srpm_dl is changed and srpm_rpmbuild.msg == "All items completed"'

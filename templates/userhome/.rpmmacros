@@ -1,0 +1,2 @@
+#Path to top of build area
+%_topdir	%{getenv:HOME}/{{ srpm_build_dir }}
