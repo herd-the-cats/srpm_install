@@ -1,7 +1,7 @@
 SRPM Install
 =========
 
-This role downloads the SRPM from the specified URL, builds it, installs it, and excludes it from further dnf updates. By default this role builds gnome-keyring without ssh-agent.
+This role downloads the SRPM from the specified URL, builds it, installs it, and excludes it from further dnf updates. Example vars and spec file for building gnome-keyring without ssh-agent are included.
 
 
 Role Variables
