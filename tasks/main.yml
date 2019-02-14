@@ -25,14 +25,16 @@
     url: "{{ item.url }}"
     dest: "/tmp/"
     mode: 0644
+    force: true
   with_items: "{{ srpm_pkgs }}"
   register: srpm_dl
+  changed_when: srpm_dl.checksum_dest != srpm_dl.checksum_src
   become: no
 
 - name: "Install SRPMs."
   command: "rpm -ivh /tmp/{{ item.url | basename }}"
   with_items: "{{ srpm_pkgs }}"
-  when: srpm_dl is changed
+  when: srpm_dl.status_code is 200
   become: no
 
 - name: "Copy custom SRPM spec files."
@@ -41,7 +43,7 @@
     dest: "{{lookup('env', 'HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec }}"
     mode: 0644
   with_items: "{{ srpm_pkgs | selectattr('spec','defined') | list | default([]) }}"
-  when: srpm_dl is changed
+  when: srpm_dl.status_code is 200
   become: no
 
 - name: "Install SRPM dependencies."
@@ -51,13 +53,13 @@
   with_subelements:
   - "{{ srpm_pkgs | selectattr('deps','defined') | list | default([]) }}"
   - "deps"
-  when: srpm_dl is changed
+  when: srpm_dl.status_code is 200
 
 - name: "Build custom RPMs."
   command: "rpmbuild -bb {{lookup('env','HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec | default( item.name + '.spec' ) }}"
   with_items: "{{ srpm_pkgs }}"
   register: srpm_rpmbuild
-  when: srpm_dl is changed
+  when: srpm_dl.status_code is 200
   become: no
 
 - name: "Set variable with srpm names."
@@ -80,6 +82,7 @@
       ')[-\w]*[-]?(?:\d\.\d+\.\d[-]\d[a-zA-Z]{0,6}){1}[.\w]+(?P<arch>x86_64|noarch)+\.rpm)', '\g<name> \g<arch>') |
       list }}
   with_items: "{{ srpm_rpmbuild.results }}"
+  when: 'srpm_dl.status_code is 200 and srpm_rpmbuild.msg == "All items completed"'
   become: no
 
 - name: "Install custom RPMS."
@@ -89,7 +92,8 @@
       map('regex_replace', '^([^\s]+)\s([^\s]+)$', lookup('env','HOME') +
       '/' + srpm_build_dir + '/RPMS/\2/\1') | list }}
     state: "present"
-  when: 'srpm_dl is changed and srpm_rpmbuild.msg == "All items completed"'
+    disable_excludes: true
+  when: 'srpm_dl.status_code is 200 and srpm_rpmbuild.msg == "All items completed"'
 
 - name: "Exclude custom packages from dnf."
   lineinfile:
@@ -99,4 +103,4 @@
     backup: yes
     path: "/etc/dnf/dnf.conf"
     line: "excludepkgs={{ srpm_names | join(',') }}"
-  when: 'srpm_dl is changed and srpm_rpmbuild.msg == "All items completed"'
+  when: 'srpm_dl.status_code is 200 and srpm_rpmbuild.msg == "All items completed"'
