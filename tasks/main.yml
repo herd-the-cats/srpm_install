@@ -34,7 +34,7 @@
 - name: "Install SRPMs."
   command: "rpm -ivh /tmp/{{ item.url | basename }}"
   with_items: "{{ srpm_pkgs }}"
-  when: srpm_dl.status_code is 200
+  when: srpm_dl.status_code is range(200,300)
   become: no
 
 - name: "Copy custom SRPM spec files."
@@ -43,7 +43,8 @@
     dest: "{{lookup('env', 'HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec }}"
     mode: 0644
   with_items: "{{ srpm_pkgs | selectattr('spec','defined') | list | default([]) }}"
-  when: srpm_dl.status_code is 200
+  when: srpm_dl.status_code is range(200,300)
+
   become: no
 
 - name: "Install SRPM dependencies."
@@ -53,13 +54,14 @@
   with_subelements:
   - "{{ srpm_pkgs | selectattr('deps','defined') | list | default([]) }}"
   - "deps"
-  when: srpm_dl.status_code is 200
+  when: srpm_dl.status_code is range(200,300)
 
 - name: "Build custom RPMs."
   command: "rpmbuild -bb {{lookup('env','HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec | default( item.name + '.spec' ) }}"
   with_items: "{{ srpm_pkgs }}"
   register: srpm_rpmbuild
-  when: srpm_dl.status_code is 200
+  when: srpm_dl.status_code is range(200,300)
+
   become: no
 
 - name: "Set variable with srpm names."
@@ -82,7 +84,7 @@
       ')[-\w]*[-]?(?:\d\.\d+\.\d[-]\d[a-zA-Z]{0,6}){1}[.\w]+(?P<arch>x86_64|noarch)+\.rpm)', '\g<name> \g<arch>') |
       list }}
   with_items: "{{ srpm_rpmbuild.results }}"
-  when: 'srpm_dl.status_code is 200 and srpm_rpmbuild.msg == "All items completed"'
+  when: 'srpm_dl.status_code is range(200,300) and srpm_rpmbuild.msg == "All items completed"'
   become: no
 
 - name: "Install custom RPMS."
@@ -93,7 +95,7 @@
       '/' + srpm_build_dir + '/RPMS/\2/\1') | list }}
     state: "present"
     disable_excludes: true
-  when: 'srpm_dl.status_code is 200 and srpm_rpmbuild.msg == "All items completed"'
+  when: 'srpm_dl.status_code is range(200,300) and srpm_rpmbuild.msg == "All items completed"'
 
 - name: "Exclude custom packages from dnf."
   lineinfile:
@@ -103,4 +105,4 @@
     backup: yes
     path: "/etc/dnf/dnf.conf"
     line: "excludepkgs={{ srpm_names | join(',') }}"
-  when: 'srpm_dl.status_code is 200 and srpm_rpmbuild.msg == "All items completed"'
+  when: 'srpm_dl.status_code is range(200,300) and srpm_rpmbuild.msg == "All items completed"'
