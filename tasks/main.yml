@@ -40,7 +40,7 @@
     src: "srpm_specs/{{ item.spec }}"
     dest: "{{lookup('env', 'HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec }}"
     mode: 0644
-  with_items: "{{ srpm_pkgs }}"
+  with_items: "{{ srpm_pkgs | selectattr('spec','defined') | list | default([]) }}"
   when: srpm_dl is changed
   become: no
 
@@ -49,12 +49,12 @@
     name: "{{ item.1 }}"
     state: "present"
   with_subelements:
-  - "{{ srpm_pkgs }}"
+  - "{{ srpm_pkgs | selectattr('deps','defined') | list | default([]) }}"
   - "deps"
   when: srpm_dl is changed
 
 - name: "Build custom RPMs."
-  command: "rpmbuild -bb {{lookup('env','HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec }}"
+  command: "rpmbuild -bb {{lookup('env','HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec | default( item.name + '.spec' ) }}"
   with_items: "{{ srpm_pkgs }}"
   register: srpm_rpmbuild
   when: srpm_dl is changed
@@ -77,7 +77,7 @@
       regex_findall('^Wrote[:].*rpm$', multiline=True) |
       map('regex_replace','^Wrote:\s[/\S]+(?P<name>(?:' +
       srpm_names | join('|') +
-      ')[-\w]*[-]?(?:\d\.\d\d\.\d[-]\d)+[.\w]+(?P<arch>x86_64|noarch)+\.rpm)', '\g<name> \g<arch>') |
+      ')[-\w]*[-]?(?:\d\.\d+\.\d[-]\d[a-zA-Z]{0,6}){1}[.\w]+(?P<arch>x86_64|noarch)+\.rpm)', '\g<name> \g<arch>') |
       list }}
   with_items: "{{ srpm_rpmbuild.results }}"
   become: no
