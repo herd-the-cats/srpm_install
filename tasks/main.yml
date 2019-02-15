@@ -94,10 +94,9 @@
 - name: "Exclude custom packages from dnf."
   lineinfile:
     state: "present"
-    firstmatch: yes
     insertafter: '\[main\]'
     backup: yes
     path: "/etc/dnf/dnf.conf"
     line: "excludepkgs={{ srpm_names | join(',') }}"
-    regexp: "excludepkgs=.+"
+    regexp: "^excludepkgs.+\n"
   when: 'srpm_rpmbuild.msg == "All items completed"'
