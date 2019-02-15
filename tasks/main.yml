@@ -88,7 +88,7 @@
       map('regex_replace', '^([^\s]+)\s([^\s]+)$', lookup('env','HOME') +
       '/' + srpm_build_dir + '/RPMS/\2/\1') | list }}
     state: "present"
-    disable_excludes: true
+    disable_excludes: "all"
   when: 'srpm_rpmbuild.msg == "All items completed"'
 
 - name: "Exclude custom packages from dnf."
@@ -99,4 +99,5 @@
     backup: yes
     path: "/etc/dnf/dnf.conf"
     line: "excludepkgs={{ srpm_names | join(',') }}"
+    regexp: "excludepkgs=.+"
   when: 'srpm_rpmbuild.msg == "All items completed"'
