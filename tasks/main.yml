@@ -79,7 +79,11 @@
       ')[-\w]*[-]?(?:\d\.\d+\.\d[-]\d[a-zA-Z]{0,6}){1}[.\w]+(?P<arch>x86_64|noarch)+\.rpm)', '\g<name> \g<arch>') |
       list }}
   with_items: "{{ srpm_rpmbuild.results }}"
-  when: 'srpm_rpmbuild.msg == "All items completed"'
+  when:
+  - not item.skipped
+  - srpm_rpmbuild is defined
+  - srpm_rpmbuild != ""
+  - 'srpm_rpmbuild.msg == "All items completed"'
   become: no
 
 - name: "Install custom RPMS."
@@ -90,7 +94,9 @@
       '/' + srpm_build_dir + '/RPMS/\2/\1') | list }}
     state: "present"
     disable_excludes: "all"
-  when: 'srpm_rpmbuild.msg == "All items completed"'
+  when:
+  - srpm_built is defined
+  - 'srpm_rpmbuild.msg == "All items completed"'
 
 - name: "Exclude custom packages from dnf."
   lineinfile:

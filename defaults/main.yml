@@ -9,7 +9,7 @@ srpm_build_dir: "Build/src/rpm"
 srpm_pkgs: []
 #- name: "gnome-keyring"
 #  url: "https://dl.fedoraproject.org/pub/fedora/linux/releases/29/Everything/source/tree/Packages/g/gnome-keyring-3.28.2-2.fc29.src.rpm"
-#  spec: "gnome-keyring.spec"
+#  spec: "gnome-keyring-custom.spec"
 #  deps:
 #  - gcr-devel
 #  - glib2
