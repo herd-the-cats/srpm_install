@@ -40,6 +40,7 @@
     dest: "{{lookup('env', 'HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec }}"
     mode: 0644
   with_items: "{{ srpm_pkgs | selectattr('spec','defined') | list | default([]) }}"
+  register: srpm_copy_spec
   become: no
 
 - name: "Install SRPM dependencies."
@@ -49,11 +50,13 @@
   with_subelements:
   - "{{ srpm_pkgs | selectattr('deps','defined') | list | default([]) }}"
   - "deps"
+  register: srpm_pkg_deps
 
 - name: "Build custom RPMs."
   command: "rpmbuild -bb {{lookup('env','HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec | default( item.name + '.spec' ) }}"
   with_items: "{{ srpm_pkgs }}"
   register: srpm_rpmbuild
+  when: srpm_dl is changed or srpm_copy_spec is changed or srpm_pkg_deps is changed
   become: no
 
 - name: "Set variable with srpm names."
