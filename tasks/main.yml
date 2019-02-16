@@ -2,9 +2,8 @@
 # tasks file for srpm_install
 - name: "Install prerequisites for rpmbuild."
   dnf:
-    name: "{{ item }}"
+    name: "{{ srpm_build_deps }}"
     state: "present"
-  with_items: "{{ srpm_build_deps }}"
 
 - name: "Create build directory for custom rpm packages."
   file:
@@ -25,15 +24,14 @@
     url: "{{ item.url }}"
     dest: "/tmp/"
     mode: 0644
-    force: true
   with_items: "{{ srpm_pkgs }}"
   register: srpm_dl
-  changed_when: srpm_dl.checksum_dest != srpm_dl.checksum_src
   become: no
 
 - name: "Install SRPMs."
   command: "rpm -ivh /tmp/{{ item.url | basename }}"
   with_items: "{{ srpm_pkgs }}"
+  when: srpm_dl is changed
   become: no
 
 - name: "Copy custom SRPM spec files."
