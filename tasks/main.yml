@@ -1,9 +1,18 @@
 ---
 # tasks file for srpm_install
+
+# Seatbelt. This role should not be run directly as root.
+- name: "Check that this role is running as a non-root build user."
+  fail:
+    msg: "Please use a non-root remote user to run this role. Using rpmbuild as a superuser can have unfortunate results."
+  when: lookup('pipe','id -u') == 0 or ansible_user == root
+  become: no
+
 - name: "Install prerequisites for rpmbuild."
   dnf:
     name: "{{ srpm_build_deps }}"
     state: "present"
+  become: yes
 
 - name: "Create build directory for custom rpm packages."
   file:
@@ -51,12 +60,13 @@
   - "{{ srpm_pkgs | selectattr('deps','defined') | list | default([]) }}"
   - "deps"
   register: srpm_pkg_deps
+  become: yes
 
 - name: "Build custom RPMs."
   command: "rpmbuild -bb {{lookup('env','HOME')}}/{{ srpm_build_dir }}/SPECS/{{ item.spec | default( item.name + '.spec' ) }}"
   with_items: "{{ srpm_pkgs }}"
   register: srpm_rpmbuild
-  when: srpm_dl is changed or srpm_copy_spec is changed or srpm_pkg_deps is changed
+  when: (lookup('pipe','id -u') != 0) and (srpm_dl is changed or srpm_copy_spec is changed or srpm_pkg_deps is changed)
   become: no
 
 - name: "Set variable with srpm names."
@@ -80,7 +90,7 @@
       list }}
   with_items: "{{ srpm_rpmbuild.results }}"
   when:
-  - not item.skipped
+  - (item.skipped is not defined and not item.skipped)
   - srpm_rpmbuild is defined
   - srpm_rpmbuild != ""
   - 'srpm_rpmbuild.msg == "All items completed"'
@@ -97,6 +107,7 @@
   when:
   - srpm_built is defined
   - 'srpm_rpmbuild.msg == "All items completed"'
+  become: yes
 
 - name: "Exclude custom packages from dnf."
   lineinfile:
@@ -107,3 +118,4 @@
     line: "excludepkgs={{ srpm_names | join(',') }}"
     regexp: "^excludepkgs.+\n"
   when: 'srpm_rpmbuild.msg == "All items completed"'
+  become: yes

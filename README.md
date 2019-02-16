@@ -2,6 +2,7 @@ SRPM Install
 =========
 
 This role downloads the SRPM from the specified URL, builds it, installs it, and excludes it from further dnf updates. Example vars and spec file for building gnome-keyring without ssh-agent are included.
+This role should be run with a regular user. It will fail if run directly as root.
 
 
 Role Variables
