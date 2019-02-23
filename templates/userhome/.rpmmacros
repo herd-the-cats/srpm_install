@@ -1,2 +1,4 @@
 #Path to top of build area
 %_topdir	%{getenv:HOME}/{{ srpm_build_dir }}
+# A little longer than the default 2 years of changelog entries.
+%_changelog_trimtime	%{lua:print(os.time() - 4 * 365 * 86400)}
