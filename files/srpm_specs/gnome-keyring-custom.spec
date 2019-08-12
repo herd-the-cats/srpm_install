@@ -3,13 +3,13 @@
 %global gcrypt_version 1.2.2
 
 Name: gnome-keyring
-Version: 3.28.2
-Release: 3%{?dist}
+Version: 3.31.91
+Release: 2%{?dist}
 Summary: Framework for managing passwords and other secrets
 
 License: GPLv2+ and LGPLv2+
 URL:     https://wiki.gnome.org/Projects/GnomeKeyring
-Source0: https://download.gnome.org/sources/%{name}/3.28/%{name}-%{version}.tar.xz
+Source0: https://download.gnome.org/sources/%{name}/3.31/%{name}-%{version}.tar.xz
 
 BuildRequires:  gcc
 BuildRequires: pkgconfig(gcr-3) >= %{gcr_version}
@@ -92,6 +92,7 @@ rm $RPM_BUILD_ROOT%{_libdir}/gnome-keyring/devel/*.la
 %{_sysconfdir}/xdg/autostart/*
 %{_datadir}/GConf/gsettings/*.convert
 %{_datadir}/glib-2.0/schemas/*.gschema.xml
+%{_datadir}/p11-kit/modules/gnome-keyring.module
 %{_mandir}/man1/gnome-keyring.1*
 %{_mandir}/man1/gnome-keyring-3.1*
 %{_mandir}/man1/gnome-keyring-daemon.1*
@@ -101,8 +102,17 @@ rm $RPM_BUILD_ROOT%{_libdir}/gnome-keyring/devel/*.la
 
 
 %changelog
-* Tue Jan 22 2019 Jason Glass <8622213+herd-the-cats@users.noreply.github.com> - 3.28.2-3
-- Disable ssh-agent
+* Mon Aug 12 2019 Jason Glass <8622213+herd-the-cats@users.noreply.github.com> - 3.31.91-2
+- Version bump, disable ssh-agent
+
+* Sat Mar 02 2019 Kalev Lember <klember@redhat.com> - 3.31.91-1
+- Update to 3.31.91
+
+* Sun Feb 10 2019 Kalev Lember <klember@redhat.com> - 3.31.90-1
+- Update to 3.31.90
+
+* Thu Jan 31 2019 Fedora Release Engineering <releng@fedoraproject.org> - 3.28.2-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
 
 * Fri Jul 13 2018 Fedora Release Engineering <releng@fedoraproject.org> - 3.28.2-2
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_29_Mass_Rebuild
